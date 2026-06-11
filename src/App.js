@@ -1,243 +1,263 @@
-import { useState } from "react";
-import "./App.css";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+import { useState } from 'react';
+import './App.css';
+
+const   API_URL=import.meta.env.VITE_API_URL||"http://localhost:5000/api";
 
 function App() {
-  const [formData, setFormData] = useState({
-    budget: "",
-    familyType: "",
-    usage: "",
-    fuelType: "",
-    priority: "",
+
+  const[formData, setFormData]=useState({
+    budget:"",
+    familySize:"",
+    usage:"",
+    fuel:"",
+    priority:"",
   });
 
   const [recommendations, setRecommendations] = useState([]);
-  const [selectedCar, setSelectedCar] = useState(null);
-  const [explanation, setExplanation] = useState("");
 
-  const [loading, setLoading] = useState(false);
-  const [aiLoading, setAiLoading] = useState(false);
+const [loadingRecommendations, setLoadingRecommendations] =
+  useState(false);
 
-  const handleChange = (e) => {
+const [selectedCar, setSelectedCar] = useState(null);
+
+const [aiExplanation, setAiExplanation] = useState("");
+
+const [loadingExplanation, setLoadingExplanation] =
+  useState(false);
+
+
+  const handleCHange=(e) =>{
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value,
-    });
-  };
+      [e.target.name]:e.target.value,
 
-  const getRecommendations = async (e) => {
+    })
+  };
+  const getRecommendations=async (e)=>{
+
     e.preventDefault();
+    setLoadingRecommendations(true);
+    
+setSelectedCar(null);
+setAiExplanation("");
 
-    try {
-      setLoading(true);
-      setSelectedCar(null);
-      setRecommendations([]);
-      setExplanation("");
+try {
+  const response = await fetch(
+    `${API_URL}/recommend`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(formData),
+    }
+  );
 
-      const response = await fetch(`${API_URL}/cars/recommend`, {
+  const data = await response.json();
+
+  setRecommendations(data.recommendations);
+} catch (error) {
+  console.error(error);
+} finally {
+  setLoadingRecommendations(false);
+}
+  };
+
+const getLoadingExplanation = async (car) => {
+  setSelectedCar(car);
+  setLoadingExplanation(true);
+
+  try {
+    const response = await fetch(
+      `${API_URL}/explain`,
+      {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          ...formData,
-          budget: Number(formData.budget),
+          car,
+          userPreferences: formData,
+          alternatives: recommendations.filter(
+            (c) => c._id !== car._id
+          ),
         }),
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        setRecommendations(data.recommendedCars);
       }
-    } catch (error) {
-      console.log(error);
-      alert("Failed to get recommendations");
-    } finally {
-      setLoading(false);
-    }
-  };
+    );
 
-  const getLoadingExplanation = async (car) => {
-    try {
-      setAiLoading(true);
-      setSelectedCar(car);
-      setExplanation("");
+    const data = await response.json();
 
-      const alternativeCars = recommendations.filter(
-        (item) => item.name !== car.name
-      );
-
-      const response = await fetch(`${API_URL}/cars/explain`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          ...formData,
-          selectedCar: car,
-          alternativeCars,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        setExplanation(data.explanation);
-      }
-    } catch (error) {
-      console.log(error);
-      alert("Failed to generate AI explanation");
-    } finally {
-      setAiLoading(false);
-    }
-  };
+    setAiExplanation(data.explanation);
+  } catch (error) {
+    console.error("Failed to generate explanation:", error);
+  } finally {
+    setLoadingExplanation(false);
+  }
+};  
 
   return (
+
     <div className="app">
       <section className="hero">
-        <p className="tag">AI-native car research MVP</p>
-        <h1>CarMatch AI</h1>
+
+        <p className="tag">AI-Native car Research MVP</p>
+        <h1>carmatch AI</h1>
         <p>
-          Answer a few questions and get your top 3 car matches with AI-powered
-          buying advice.
+          Ask your questions and clear here itself only with correct match AI powered response
         </p>
       </section>
 
       <main className="layout">
         <form className="form-card" onSubmit={getRecommendations}>
-          <h2>Your Preferences</h2>
-
+          <h2>YOur preferences</h2>
           <label>Budget</label>
           <select
-            name="budget"
-            value={formData.budget}
-            onChange={handleChange}
-            required
+          name="budget"
+          value={formData.budget}
+          onChange={handleCHange}
+          required
           >
-            <option value="">Select Budget</option>
-            <option value="500000">Under ₹5 Lakhs</option>
-            <option value="800000">Under ₹8 Lakhs</option>
-            <option value="1000000">Under ₹10 Lakhs</option>
-            <option value="1200000">Under ₹12 Lakhs</option>
-            <option value="1500000">Under ₹15 Lakhs</option>
-            <option value="2000000">Under ₹20 Lakhs</option>
-            <option value="3000000">Above ₹20 Lakhs</option>
+            <option value="">Select budget</option>
+            <option value="800000">Under 8 Lakhs</option>
+            <option value="1000000">10 Lakhs</option>
+            <option value="1200000">12 Lakhs</option>
+            <option value="1500000">15 Lakhs</option>
           </select>
 
           <label>Family Size</label>
-          <select
-            name="familyType"
-            value={formData.familyType}
-            onChange={handleChange}
-            required
-          >
-            <option value="">Select Family Size</option>
-            <option value="Single">Single</option>
-            <option value="Couple">Couple</option>
-            <option value="Small Family">Small Family</option>
-            <option value="Large Family">Large Family</option>
-          </select>
+
+<select
+  name="familySize"
+  value={formData.familySize}
+  onChange={handleCHange}
+  required
+>
+  <option value="">Select Family Size</option>
+  <option value="Single">Single</option>
+  <option value="Couple">Couple</option>
+  <option value="Family">Family</option>
+</select>
 
           <label>Usage</label>
           <select
-            name="usage"
-            value={formData.usage}
-            onChange={handleChange}
-            required
+          name="usage"
+          value={formData.usage}
+          onChange={handleCHange}
+          required
           >
             <option value="">Select Usage</option>
-            <option value="City">City Commute</option>
-            <option value="Highway">Highway Travel</option>
+           
+            <option value="City">City</option>
+            <option value="Highway">Highway</option>
             <option value="Mixed">City + Highway</option>
-            <option value="Hills">Hilly / Mountain Roads</option>
-            <option value="Rural">Village / Rough Roads</option>
-          </select>
+            <option value="Hilly">Hilly / Mountain Roads</option>
+             <option value="Village">Village / Rough Roads</option>
 
-          <label>Fuel Type</label>
+
+          </select>
+         <label>Fuel Type</label>
           <select
-            name="fuelType"
-            value={formData.fuelType}
-            onChange={handleChange}
-            required
+          name="fuel"
+          value={formData.fuel}
+          onChange={handleCHange}
+          required
           >
-            <option value="">Select Fuel</option>
-            <option value="Petrol">Petrol</option>
+            <option value="">Select Fuel Type</option>
+            <option value="petrol">petrol</option>
             <option value="Diesel">Diesel</option>
             <option value="CNG">CNG</option>
-            <option value="Electric">Electric</option>
-            <option value="Hybrid">Hybrid</option>
-          </select>
+           
 
-          <label>Priority</label>
-          <select
-            name="priority"
-            value={formData.priority}
-            onChange={handleChange}
-            required
-          >
-            <option value="">Select Priority</option>
-            <option value="Safety">Safety</option>
-            <option value="Mileage">Mileage</option>
-            <option value="Comfort">Comfort</option>
-            <option value="Performance">Performance</option>
-            <option value="Features">Features</option>
-            <option value="Low Maintenance">Low Maintenance</option>
           </select>
+         
+         <label>Priority</label>
 
-          <button type="submit" disabled={loading}>
-            {loading ? "Finding Cars..." : "Find My Car Match"}
-          </button>
+<select
+  name="priority"
+  value={formData.priority}
+  onChange={handleCHange}
+  required
+>
+  <option value="">Select Priority</option>
+  <option value="Safety">Safety</option>
+  <option value="Mileage">Mileage</option>
+  <option value="Features">Features</option>
+</select>
+
+<button
+  type="submit"
+  disabled={loadingRecommendations}
+>
+  {loadingRecommendations
+    ? "Finding Cars..."
+    : "Find My Cars"}
+</button>
+                
         </form>
 
         <section className="results">
-          <h2>Recommended Shortlist</h2>
+          <h2>Recommended shortlist</h2>
 
-          {recommendations.length === 0 && (
-            <div className="empty">
-              Your top 3 car recommendations will appear here.
-            </div>
-          )}
+          {
+            recommendations.length ===0 &&  (
+              <div className='empty'>Your top 3 car recommendations will appear here</div>
+            )}
+            <div className="grid">
+  {recommendations.map((car, index) => (
+    <div className="car-card" key={car._id}>
+      <span className="rank">#{index + 1}</span>
 
-          <div className="grid">
-            {recommendations.map((car, index) => (
-              <div className="car-card" key={car._id || car.name}>
-                <span className="rank">#{index + 1}</span>
+      <h3>{car.name}</h3>
 
-                <h3>{car.name}</h3>
+      <p className="score">
+        {car.matchScore}% Match
+      </p>
 
-                <p className="score">{car.matchPercentage}% Match</p>
+      <div className="details">
+        <span>{car.mileage} km/l</span>
+        <span>₹{car.price.toLocaleString("en-IN")}</span>
+        <span>⭐ {car.safetyRating}/5</span>
+        <span>⛽ {car.fuelType}</span>
+      </div>
 
-                <div className="car-details">
-                  <span>💰 ₹{car.price?.toLocaleString()}</span>
-                  <span>⛽ {car.fuelType}</span>
-                  <span>🛣️ {car.mileage} km/l</span>
-                  <span>Usage: {car.usage?.join(", ")}</span>
-                </div>
+      <ul>
+        {car.reasons?.map((reason, i) => (
+          <li key={i}>{reason}</li>
+        ))}
+      </ul>
 
-                <button
-                  onClick={() => getLoadingExplanation(car)}
-                  disabled={aiLoading}
-                >
-                  {aiLoading && selectedCar?.name === car.name
-                    ? "Analysing..."
-                    : "Why Recommended?"}
-                </button>
-              </div>
-            ))}
-          </div>
+      <button
+        onClick={() => getLoadingExplanation(car)}
+        disabled={loadingExplanation}
+      >
+        {loadingExplanation &&
+        selectedCar?._id === car._id
+          ? "Analyzing..."
+          : "Why Recommended?"}
+      </button>
+    </div>
+  ))}
+</div>
 
-          {selectedCar && explanation && (
-            <div className="ai-explanation">
-              <h3>Why {selectedCar.name} is Recommended</h3>
+{selectedCar && aiExplanation && (
+  <div className="ai-explanation">
+    <h3>
+      Why {selectedCar.name} is Recommended
+    </h3>
 
-              <div className="explanation-content">
-                <pre>{explanation}</pre>
-              </div>
-            </div>
-          )}
+    <div className="explanation-content">
+      {aiExplanation}
+    </div>
+  </div>
+)}
+                
+
+              
+     
+          
         </section>
+
       </main>
     </div>
   );
